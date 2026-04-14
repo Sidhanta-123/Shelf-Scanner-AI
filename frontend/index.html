@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shelf Scanner AI — Library Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #080c14;
+      --surface:  #111827;
+      --card:     #1a2234;
+      --border:   rgba(255,255,255,0.06);
+      --primary:  #818cf8;
+      --accent:   #34d399;
+      --warn:     #fbbf24;
+      --text:     #f1f5f9;
+      --muted:    #94a3b8;
+      --red:      #f87171;
+      --radius:   1rem;
+      --shadow:   0 20px 60px rgba(0,0,0,0.5);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      padding: 2.5rem 1rem 1rem;
+      background: linear-gradient(180deg, rgba(129,140,248,.08) 0%, transparent 100%);
+    }
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #818cf8, #c084fc, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { color: var(--muted); margin-top: .4rem; font-size: .95rem; }
+
+    /* ── Main layout ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+    /* ── Scan card ── */
+    .scan-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+    }
+    .scan-card h2 { font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; }
+
+    .scan-modes { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .mode-tab {
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: .5rem;
+      padding: .5rem 1.1rem;
+      font-size: .875rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .mode-tab.active, .mode-tab:hover {
+      background: rgba(129,140,248,.15);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Scan areas */
+    .scan-area { display: none; }
+    .scan-area.active { display: block; }
+
+    .upload-zone {
+      border: 2px dashed rgba(129,140,248,.3);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: rgba(129,140,248,.03);
+    }
+    .upload-zone:hover { border-color: var(--primary); background: rgba(129,140,248,.07); }
+    .upload-zone p { color: var(--muted); margin-top: .5rem; font-size: .875rem; }
+    .upload-zone .icon { font-size: 2.5rem; }
+    #fileInput { display: none; }
+
+    #previewImg {
+      max-width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      border-radius: .75rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    video#cameraFeed {
+      width: 100%; border-radius: .75rem; display: none; background: #000;
+    }
+
+    .manual-row { display: flex; gap: .75rem; }
+    .manual-row input {
+      flex: 1;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: .5rem;
+      padding: .75rem 1rem;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .manual-row input:focus { border-color: var(--primary); }
+    .manual-row input::placeholder { color: var(--muted); }
+
+    .btn {
+      background: linear-gradient(135deg, #818cf8, #6366f1);
+      color: #fff;
+      border: none;
+      border-radius: .5rem;
+      padding: .75rem 1.4rem;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,.4); }
+    .btn.green { background: linear-gradient(135deg, #10b981, #059669); }
+    .btn.green:hover { box-shadow: 0 6px 20px rgba(16,185,129,.4); }
+    .btn.outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn.outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-row { display: flex; gap: .75rem; margin-top: 1rem; flex-wrap: wrap; }
+
+    /* ── Status / loader ── */
+    .loader { display: none; text-align: center; padding: 1.5rem; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(129,140,248,.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto .75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader p { color: var(--muted); font-size: .9rem; }
+
+    .alert {
+      border-radius: .75rem;
+      padding: 1rem 1.25rem;
+      margin-top: 1rem;
+      font-size: .9rem;
+      display: none;
+    }
+    .alert.err  { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3); color: var(--red); }
+    .alert.warn { background: rgba(251,191,36,.1);  border: 1px solid rgba(251,191,36,.3);  color: var(--warn); }
+
+    /* ── Book Insights card ── */
+    #insightsCard {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: none;
+      box-shadow: var(--shadow);
+      animation: fadeUp .4s ease;
+    }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px);} to { opacity:1; transform:none;} }
+
+    .book-hero {
+      display: flex;
+      gap: 2rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, rgba(129,140,248,.08), rgba(52,211,153,.05));
+      border-bottom: 1px solid var(--border);
+    }
+    @media (max-width: 640px) { .book-hero { flex-direction: column; } }
+
+    .book-cover {
+      flex-shrink: 0;
+      width: 130px; height: 190px;
+      object-fit: cover;
+      border-radius: .75rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+      background: var(--surface);
+    }
+    .cover-placeholder {
+      width: 130px; height: 190px;
+      border-radius: .75rem;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      flex-shrink: 0;
+    }
+
+    .book-meta { flex: 1; }
+    .book-meta h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: .4rem;
+      background: linear-gradient(135deg, #e2e8f0, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .book-meta .author  { color: var(--muted); font-size: .95rem; margin-bottom: .6rem; }
+    .book-meta .pub-row { color: var(--muted); font-size: .8rem; }
+
+    .meta-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: .9rem 0; }
+    .chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--border);
+      border-radius: 2rem;
+      padding: .3rem .75rem;
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    .chip.genre { border-color: rgba(129,140,248,.4); color: var(--primary); }
+    .chip.tag   { border-color: rgba(52,211,153,.3);  color: var(--accent); }
+
+    /* Score bar */
+    .score-section { margin-top: 1rem; }
+    .score-label {
+      display: flex; justify-content: space-between;
+      font-size: .8rem; margin-bottom: .4rem;
+    }
+    .score-label span:last-child { font-weight: 700; color: var(--accent); font-size: 1rem; }
+    .score-bar {
+      height: 8px;
+      background: rgba(255,255,255,.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #818cf8, #34d399);
+      transition: width .8s ease;
+    }
+
+    /* Stars */
+    .stars { color: var(--warn); letter-spacing: .1rem; font-size: .9rem; }
+
+    /* ── Sections ── */
+    .section { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section h3 {
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .section p { font-size: .925rem; color: #cbd5e1; line-height: 1.7; }
+
+    /* Tags row */
+    .tags-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+    /* Similar books */
+    .similar-list { display: flex; flex-direction: column; gap: .75rem; }
+    .similar-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: .75rem;
+      padding: .75rem 1rem;
+      transition: background .2s;
+    }
+    .similar-item:hover { background: rgba(129,140,248,.07); }
+    .similar-rank {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: rgba(255,255,255,.15);
+      width: 2rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .similar-info h4 { font-size: .9rem; font-weight: 600; }
+    .similar-info p  { font-size: .78rem; color: var(--muted); }
+    .similar-score {
+      margin-left: auto;
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ── OCR debug ── */
+    details {
+      margin-top: 1rem;
+      padding: .75rem 1rem;
+      background: rgba(0,0,0,.2);
+      border-radius: .5rem;
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    summary { cursor: pointer; }
+    details pre { margin-top: .5rem; white-space: pre-wrap; word-break: break-all; color: #64748b; }
+    /* Mobile tip */
+    .mobile-tip {
+      background: rgba(129,140,248,.1);
+      border: 1px solid rgba(129,140,248,.2);
+      border-radius: .75rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      font-size: .9rem;
+      color: var(--text);
+    }
+    .mobile-tip .icon { font-size: 1.5rem; }
+    .ocr-chip {
+      background: var(--accent);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ocr-chip:hover {
+      background: white;
+      color: var(--primary);
+      transform: translateY(-2px);
+    }
+    .debug-info {
+      margin-top: 1.5rem;
+      background: rgba(255,255,255,0.05);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px dashed rgba(255,255,255,0.2);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📚 Shelf Scanner AI</h1>
+  <p>Point your camera at a book — get instant insights from the library companion</p>
+</header>
+
+<div class="container">
+
+  <!-- ── Scan Card ── -->
+  <div class="scan-card">
+    <h2>🔍 Identify a Book</h2>
+
+    <div class="scan-modes">
+      <button class="mode-tab active" onclick="switchMode('upload')">📁 Upload Image</button>
+      <button class="mode-tab" onclick="switchMode('camera')">📷 Use Camera</button>
+      <button class="mode-tab" onclick="switchMode('manual')">✏️ Type Title</button>
+    </div>
+
+    <!-- Upload mode -->
+    <div id="mode-upload" class="scan-area active">
+      <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">📤</div>
+        <strong>Click to upload a book cover</strong>
+        <p>JPG, PNG, WEBP supported</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" />
+      <img id="previewImg" alt="Preview" />
+      <div class="btn-row">
+        <button class="btn" id="uploadScanBtn" onclick="document.getElementById('fileInput').click()">Choose Image</button>
+      </div>
+    </div>
+
+    <!-- Camera mode -->
+    <div id="mode-camera" class="scan-area">
+
+      <video id="cameraFeed" autoplay playsinline></video>
+      <canvas id="captureCanvas" style="display:none;"></canvas>
+      <div class="btn-row">
+        <button class="btn" id="startCamBtn" onclick="startCamera()">▶ Start Camera</button>
+        <button class="btn green" id="captureBtn" style="display:none;" onclick="capturePhoto()">📸 Scan Book</button>
+        <button class="btn outline" id="stopCamBtn" style="display:none;" onclick="stopCamera()">■ Stop</button>
+      </div>
+    </div>
+
+    <!-- Manual mode -->
+    <div id="mode-manual" class="scan-area">
+      <p style="color:var(--muted); font-size:.875rem; margin-bottom:1rem;">
+        Can't scan? Type the book title to get instant insights.
+      </p>
+      <div class="manual-row">
+        <input type="text" id="manualInput" placeholder="e.g. Atomic Habits, Harry Potter..." />
+        <button class="btn" onclick="manualLookup()">Get Insights</button>
+      </div>
+    </div>
+
+    <!-- States -->
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <p id="loaderText">Scanning & fetching book insights…</p>
+    </div>
+    <div class="alert err" id="errAlert"></div>
+    <div class="alert warn" id="warnAlert"></div>
+  </div>
+
+  <!-- ── Book Insights Card ── -->
+  <div id="insightsCard">
+
+    <!-- Hero section: cover + core meta -->
+    <div class="book-hero">
+      <div id="coverWrap">
+        <div class="cover-placeholder" id="coverPlaceholder">📖</div>
+        <img id="coverImg" class="book-cover" style="display:none;" alt="Book cover" />
+      </div>
+      <div id="results" class="results-grid" style="display:none;"></div>
+    
+      <div id="debugInfo" class="debug-info" style="display:none;">
+        <h4 style="margin-top:0; font-size:0.9rem; opacity:0.8;">🔍 Detected Text (Click to Search):</h4>
+        <div id="ocrChips" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;"></div>
+        <p id="queryUsed" style="font-size:0.75rem; opacity:0.6; margin:0; font-style:italic;"></p>
+      </div>
+      <div class="book-meta">
+        <h2 id="bookTitle">—</h2>
+        <div class="author" id="bookAuthor">by —</div>
+        <div class="pub-row" id="bookPub"></div>
+
+        <div class="meta-chips" id="metaChips"></div>
+
+        <div class="stars" id="bookStars"></div>
+
+        <div class="score-section">
+          <div class="score-label">
+            <span style="color:var(--muted); font-size:.8rem;">AI Recommendation Score</span>
+            <span id="scoreVal">—</span>
+          </div>
+          <div class="score-bar">
+            <div class="score-fill" id="scoreFill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary section -->
+    <div class="section">
+      <h3>📝 Summary</h3>
+      <p id="bookSummary">—</p>
+    </div>
+
+    <!-- Tags section -->
+    <div class="section">
+      <h3>🏷️ Tags</h3>
+      <div class="tags-row" id="bookTags"></div>
+    </div>
+
+    <!-- Full Description (collapsible) -->
+    <div class="section">
+      <h3>📖 About This Book</h3>
+      <p id="bookDesc">—</p>
+    </div>
+
+    <!-- Similar Books section -->
+    <div class="section">
+      <h3>✨ Similar Books You May Like</h3>
+      <div class="similar-list" id="similarList"></div>
+    </div>
+
+    <!-- OCR debug -->
+    <div class="section" id="ocrSection" style="display:none;">
+      <details>
+        <summary>🔬 Debug: OCR detected text</summary>
+        <pre id="ocrText"></pre>
+      </details>
+    </div>
+
+  </div><!-- /insightsCard -->
+</div><!-- /container -->
+
+<script>
+  // Use window.location.origin so it works on both localhost and network IP
+  const API = window.location.origin;
+
+  // ── Mode switcher ──────────────────────────────────────────────────────────
+  function switchMode(mode) {
+    document.querySelectorAll('.scan-area').forEach(a => a.classList.remove('active'));
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(`mode-${mode}`).classList.add('active');
+    event.currentTarget.classList.add('active');
+    stopCamera();
+    hideStates();
+  }
+
+
+
+  // ── File Upload ────────────────────────────────────────────────────────────
+  const fileInput = document.getElementById('fileInput');
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const preview = document.getElementById('previewImg');
+    preview.src = url;
+    preview.style.display = 'block';
+    scanFile(file);
+  });
+
+  // ── Camera ─────────────────────────────────────────────────────────────────
+  let stream = null;
+
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showError("❌ Camera API not supported on this browser/connection. Mobile browsers require <b>HTTPS</b> (e.g. ngrok) for camera access.");
+      return;
+    }
+    showLoading('📸 Waiting for camera permission...<br><small>Please look for a popup at the top/bottom of your browser screen.</small>');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      hideLoading();
+      const feed = document.getElementById('cameraFeed');
+      feed.srcObject = stream;
+      feed.style.display = 'block';
+      document.getElementById('startCamBtn').style.display = 'none';
+      document.getElementById('captureBtn').style.display = 'inline-flex';
+      document.getElementById('stopCamBtn').style.display = 'inline-flex';
+    } catch (err) {
+      showError('Camera access denied: ' + err.message);
+    }
+  }
+
+  function stopCamera() {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    document.getElementById('cameraFeed').style.display = 'none';
+    document.getElementById('captureBtn').style.display = 'none';
+    document.getElementById('stopCamBtn').style.display = 'none';
+    document.getElementById('startCamBtn').style.display = 'inline-flex';
+  }
+
+  function capturePhoto() {
+    const video  = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('captureCanvas');
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height); // Use scaled dimensions
+    canvas.toBlob(blob => {
+      const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+      stopCamera();
+      scanFile(file);
+    }, 'image/jpeg', 0.85); // 0.85 quality is plenty for OCR
+  }
+
+  // ── Upload & scan ─────────────────────────────────────────────────────────
+  async function scanFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    
+    showLoading('⚙️ Optimizing image for scanning...');
+    
+    // ── Optimizer: Client-side resizing before upload ──
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 1024; // Good balance for OCR
+        let w = img.width;
+        let h = img.height;
+        
+        if (w > h && w > maxDim) { h = (h * maxDim) / w; w = maxDim; }
+        else if (h > maxDim) { w = (w * maxDim) / h; h = maxDim; }
+        
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        
+        canvas.toBlob(async (blob) => {
+          const resizedFile = new File([blob], 'scan.jpg', { type: 'image/jpeg' });
+          await performUpload(resizedFile);
+        }, 'image/jpeg', 0.85);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function performUpload(file) {
+    showLoading('🔍 Searching for book insights...');
+    const form = new FormData();
+    form.append('file', file);
+
+    // ── Timeout: wait up to 90 seconds for slow OCR/ngrok ──
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
+
+    try {
+      const res  = await fetch(`${API}/scan-image`, { 
+        method: 'POST', 
+        body: form,
+        signal: controller.signal 
+      });
+      clearTimeout(timer);
+      const data = await res.json();
+      hideLoading();
+      handleResult(data);
+    } catch (err) {
+      clearTimeout(timer);
+      hideLoading();
+      if (err.name === 'AbortError') {
+        showError('Connection timed out. The scan took too long (over 90 seconds). Try closer photo or type the title.');
+      } else {
+        showError('Could not reach the backend server. If using ngrok, check if it timed out or try refreshing.');
+      }
+    }
+  }
+
+  // ── Manual lookup ─────────────────────────────────────────────────────────
+  async function manualLookup() {
+    const q = document.getElementById('manualInput').value.trim();
+    if (!q) { showWarn('Please enter a book title.'); return; }
+    showLoading(`📡 Looking up "${q}"…`);
+    try {
+      const res  = await fetch(`${API}/lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q })
+      });
+      const data = await res.json();
+      hideLoading();
+      if (res.status === 404) { showError('Book not found. Try a different title.'); return; }
+      handleResult(data);
+    } catch (err) {
+      hideLoading();
+      showError('Could not reach the backend server.');
+    }
+  }
+
+  // ── Render result ─────────────────────────────────────────────────────────
+  function handleResult(data) {
+    const debug = document.getElementById('debugInfo');
+    const chips = document.getElementById('ocrChips');
+    chips.innerHTML = '';
+    
+    if (data.detected_text && data.detected_text.length > 0) {
+      data.detected_text.forEach(text => {
+        const chip = document.createElement('span');
+        chip.className = 'ocr-chip';
+        chip.innerText = text;
+        chip.title = "Click to search for this text";
+        chip.onclick = () => { 
+          document.getElementById('bookSearch').value = text; 
+          document.getElementById('manual-tab').click(); // Switch to manual tab
+          lookupManual(); 
+        };
+        chips.appendChild(chip);
+      });
+      debug.style.display = 'block';
+      document.getElementById('queryUsed').innerText = data.query_used ? `Auto-matched using: "${data.query_used}"` : "Showing all detected phrases — click one to search manually.";
+    }
+
+    if (data.status === 'error' || data.status === 'no_match') {
+      showWarn(data.message || 'Could not identify the book.');
+      if (data.detected_text && data.detected_text.length) {
+        showOCR(data.detected_text);
+        // Offer to use OCR text as manual input
+        document.getElementById('manualInput').value = data.detected_text[0];
+        switchMode('manual');
+      }
+      return;
+    }
+
+    const book = data.book;
+    const csvRecs = data.dataset_recommendations || [];
+
+    // Cover image
+    const coverImg = document.getElementById('coverImg');
+    const placeholder = document.getElementById('coverPlaceholder');
+    if (book.thumbnail) {
+      coverImg.src = book.thumbnail.replace('http://', 'https://');
+      coverImg.style.display = 'block';
+      placeholder.style.display = 'none';
+    } else {
+      coverImg.style.display = 'none';
+      placeholder.style.display = 'flex';
+    }
+
+    // Title & author
+    document.getElementById('bookTitle').textContent = book.title || 'Unknown Title';
+    document.getElementById('bookAuthor').textContent = 'by ' + (book.authors || book.author || 'Unknown Author');
+
+    // Publisher / date
+    const pubRow = [];
+    if (book.publisher) pubRow.push(book.publisher);
+    if (book.published_date) pubRow.push(book.published_date);
+    document.getElementById('bookPub').textContent = pubRow.join(' · ');
+
+    // Chips (genre)
+    const chipsEl = document.getElementById('metaChips');
+    chipsEl.innerHTML = '';
+    const genres = (book.categories || book.genre || '').split(',');
+    genres.slice(0, 3).forEach(g => {
+      if (g.trim()) chipsEl.insertAdjacentHTML('beforeend', `<span class="chip genre">📚 ${g.trim()}</span>`);
+    });
+    if (book.page_count) chipsEl.insertAdjacentHTML('beforeend', `<span class="chip">📄 ${book.page_count} pages</span>`);
+    if (book.isbn) chipsEl.insertAdjacentHTML('beforeend', `<span class="chip">ISBN: ${book.isbn}</span>`);
+
+    // Stars
+    const rating = book.rating || book.average_rating;
+    const starsEl = document.getElementById('bookStars');
+    if (rating && rating !== 'Not rated') {
+      const r = parseFloat(rating);
+      const filled = Math.round(r);
+      starsEl.innerHTML = '★'.repeat(filled) + '☆'.repeat(5 - filled) + ` <span style="color:var(--muted); font-size:.8rem;">${rating}/5</span>`;
+    } else {
+      starsEl.textContent = 'No ratings yet';
+      starsEl.style.color = 'var(--muted)';
+    }
+
+    // AI Recommendation Score (0.0 to 10.0)
+    // backend now returns a 0-1 normalized score for recommendation_score
+    const score = book.recommendation_score || (book.match_score > 1.0 ? 0.95 : book.match_score);
+    if (score) {
+      document.getElementById('scoreVal').textContent = (score * 10).toFixed(1) + ' / 10';
+      document.getElementById('scoreFill').style.width = (score * 100) + '%';
+    } else {
+      document.getElementById('scoreVal').textContent = '—';
+      document.getElementById('scoreFill').style.width = '0%';
+    }
+
+    // Summary
+    document.getElementById('bookSummary').textContent = book.summary || 'No summary available.';
+
+    // Tags
+    const tagsEl = document.getElementById('bookTags');
+    tagsEl.innerHTML = '';
+    (book.tags || []).forEach(t => {
+      tagsEl.insertAdjacentHTML('beforeend', `<span class="chip tag">🏷️ ${t}</span>`);
+    });
+    if (!book.tags || !book.tags.length) tagsEl.innerHTML = '<span class="chip">General</span>';
+
+    // Full description
+    document.getElementById('bookDesc').textContent = book.description || 'No description available.';
+
+    // Similar books — merge utils list + CSV recs
+    const simEl = document.getElementById('similarList');
+    simEl.innerHTML = '';
+    const simTitles = book.similar_books || [];  // list from utils.py (now with similarity_score)
+    let count = 0;
+
+    // utils.py recommendations with similarity scores
+    simTitles.forEach(rec => {
+      if (count >= 5) return;
+      const title = typeof rec === 'string' ? rec : rec.title;
+      const author = typeof rec === 'string' ? '' : rec.author;
+      const score = typeof rec === 'string' ? null : rec.similarity_score;
+      const pct = score ? Math.round(score * 100) : null;
+      
+      simEl.insertAdjacentHTML('beforeend', `
+        <div class="similar-item">
+          <div class="similar-rank">${count + 1}</div>
+          <div class="similar-info">
+            <h4>${title}</h4>
+            <p>${author || 'Similar content match'}</p>
+          </div>
+          ${pct !== null ? `<span class="similar-score">${pct}% match</span>` : ''}
+        </div>`);
+      count++;
+    });
+
+    // CSV recs with similarity score
+    csvRecs.forEach(rec => {
+      if (count >= 8 || !rec.title) return;
+      const pct = Math.round((rec.similarity_score || 0) * 100);
+      simEl.insertAdjacentHTML('beforeend', `
+        <div class="similar-item">
+          <div class="similar-rank">${count + 1}</div>
+          <div class="similar-info">
+            <h4>${rec.title}</h4>
+            <p>${rec.author || ''}</p>
+          </div>
+          <span class="similar-score">${pct}% match</span>
+        </div>`);
+      count++;
+    });
+
+    if (count === 0) simEl.innerHTML = '<p style="color:var(--muted); font-size:.875rem;">No similar books found.</p>';
+
+    // OCR debug
+    if (data.detected_text && data.detected_text.length) showOCR(data.detected_text);
+    else document.getElementById('ocrSection').style.display = 'none';
+
+    document.getElementById('insightsCard').style.display = 'block';
+    document.getElementById('insightsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function showLoading(msg) {
+    document.getElementById('loaderText').textContent = msg || 'Loading…';
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('errAlert').style.display = 'none';
+    document.getElementById('warnAlert').style.display = 'none';
+    document.getElementById('insightsCard').style.display = 'none';
+  }
+  function hideLoading() { document.getElementById('loader').style.display = 'none'; }
+  function showError(msg) {
+    const el = document.getElementById('errAlert');
+    el.textContent = '❌ ' + msg;
+    el.style.display = 'block';
+  }
+  function showWarn(msg) {
+    const el = document.getElementById('warnAlert');
+    el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+  }
+  function hideStates() {
+    document.getElementById('errAlert').style.display = 'none';
+    document.getElementById('warnAlert').style.display = 'none';
+    document.getElementById('loader').style.display = 'none';
+  }
+  function showOCR(texts) {
+    document.getElementById('ocrSection').style.display = 'block';
+    document.getElementById('ocrText').textContent = texts.join('\n---\n');
+  }
+
+  // Enter key in manual input
+  document.getElementById('manualInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') manualLookup();
+  });
+</script>
+</body>
+</html>

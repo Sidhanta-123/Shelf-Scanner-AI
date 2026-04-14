@@ -1,0 +1,34 @@
+﻿============================================================
+OCR DIAGNOSTIC
+============================================================
+
+[1] EasyOCR check:
+    EasyOCR: FAILED - No module named 'easyocr'
+
+[2] Tesseract check:
+    Tesseract: FAILED - tesseract is not installed or it's not in your PATH. See README file for more information.
+
+[3] OpenCV check:
+    OpenCV: INSTALLED v4.13.0
+
+[4] Synthetic OCR test:
+
+[5] cv_pipeline.process_image test:
+Γ£ô YOLOv8 loaded
+ΓÜá∩╕Å  EasyOCR not available: No module named 'easyocr'
+    _has_easyocr=False, _has_tesseract=False, _has_yolo=True
+[cv_pipeline] No text detected from image.
+    process_image returned: []
+
+[6] ML models check:
+[ML] Loaded 242,135 books from dataset
+[ML] Content-based models loaded (TF-IDF + KNN)
+[ML] Collaborative filtering models loaded (SVD + Item-based CF)
+[ML] Γ£ô HYBRID RECOMMENDATION SYSTEM READY
+       Collab CF: 60% | Content TF-IDF: 30% | Genre: 10%
+    models_loaded: True
+    books_df size: 242135
+    books_df columns: ['ISBN', 'Book-Title', 'Book-Author', 'Year-Of-Publication', 'Publisher']
+
+============================================================
+DONE
